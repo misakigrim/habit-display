@@ -407,10 +407,14 @@ async function syncSheet() {
     // Find the real header row instead of assuming it's the first line — title/description
     // rows above it (like row 1's title, row 3's description) are common and should be skipped.
     let headerRowIdx = -1;
-    for (let r = 0; r < Math.min(10, rows.length); r++) {
-      if (rows[r].some(c => c.trim().toLowerCase().includes('date'))) { headerRowIdx = r; break; }
+    for (let r = 0; r < Math.min(15, rows.length); r++) {
+      const looksLikeHeader = rows[r].some(c => {
+        const t = c.trim().toLowerCase();
+        return t === 'date' || (t.startsWith('date') && t.length <= 12);
+      });
+      if (looksLikeHeader) { headerRowIdx = r; break; }
     }
-    if (headerRowIdx === -1) throw new Error('no "Date" column found in the first 10 rows of the sheet');
+    if (headerRowIdx === -1) throw new Error('no row with a "Date" header cell found in the first 15 rows of the sheet');
 
     const headers = rows[headerRowIdx].map(h => h.trim());
     const iDate = findColumn(headers, ['date']);
