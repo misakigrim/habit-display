@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Right Now — Language Practice</title>
+<style>
+  :root {
+    --bg: #15151a;
+    --ink: #edece8;
+    --ink-soft: #9c9a93;
+    --hairline: #2a2a31;
+    --accent: #6b6355;
+    --accent-soft: #6b635530;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    overflow: hidden;
+  }
+  body {
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 6vh 6vw;
+    position: relative;
+    transition: color 900ms ease;
+  }
+  .watermark {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: min(60vh, 60vw);
+    color: var(--accent);
+    opacity: 0.05;
+    font-family: "Noto Serif SC", "Noto Serif KR", "Noto Serif JP", "PingFang SC", serif;
+    user-select: none;
+    pointer-events: none;
+    transition: color 900ms ease;
+  }
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ink-soft);
+    font-size: clamp(13px, 1.6vw, 16px);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    z-index: 1;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    animation: breathe 3s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+  @keyframes breathe { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+
+  .clock {
+    font-family: "SF Mono", "Courier New", monospace;
+    color: var(--ink-soft);
+    font-size: clamp(14px, 1.8vw, 18px);
+  }
+
+  .stage {
+    z-index: 1;
+    text-align: center;
+    max-width: 900px;
+    margin-top: 3vh;
+  }
+  .label {
+    font-size: clamp(14px, 1.8vw, 18px);
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1.8vh;
+    font-weight: 600;
+  }
+  .board-frame {
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 24px 30px;
+    max-width: min(92vw, 760px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 24px rgba(0,0,0,0.25);
+    cursor: pointer;
+    transition: transform 120ms ease, background 120ms ease;
+  }
+  .board-frame:hover { background: rgba(255,255,255,0.05); }
+  .board-frame:active { transform: scale(0.985); }
+  .board {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    row-gap: 12px;
+    font-family: "SF Mono", "Courier New", monospace;
+    font-size: clamp(15px, 3.1vw, 38px);
+    font-weight: 700;
+  }
+  .board-row {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    column-gap: 0.4em;
+  }
+  .word {
+    display: inline-flex;
+    flex-wrap: nowrap;
+  }
+  .flap {
+    position: relative;
+    width: 0.82em;
+    height: 1.24em;
+    margin: 0 1.5px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: linear-gradient(to bottom, #34343c 0%, #34343c 49.5%, #202027 50.5%, #202027 100%);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.04);
+    flex: none;
+  }
+  .flap .char {
+    display: block;
+    color: var(--ink);
+    text-transform: uppercase;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+  }
+  .flap.flip .char { animation-name: flapturn; animation-timing-function: linear; }
+  @keyframes flapturn {
+    0%   { transform: rotateX(0deg); }
+    48%  { transform: rotateX(-90deg); }
+    52%  { transform: rotateX(-90deg); }
+    100% { transform: rotateX(0deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .flap.flip .char { animation: none; }
+  }
+  .fade { transition: opacity 260ms ease; }
+  .fade.out { opacity: 0; }
+
+  .sound-toggle {
+    position: absolute;
+    top: 4vh;
+    right: 5vw;
+    z-index: 2;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 15px;
+    user-select: none;
+  }
+  .sound-toggle.muted { color: var(--ink-soft); opacity: 0.5; }
+
+  .sync-dot {
+    position: absolute;
+    top: 4vh;
+    right: calc(5vw + 46px);
+    z-index: 2;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ink-soft);
+    opacity: 0.3;
+  }
+  .sync-dot.sync-syncing { background: #d4a94a; opacity: 0.9; animation: breathe 1.2s ease-in-out infinite; }
+  .sync-dot.sync-ok { background: #4a9d5c; opacity: 0.85; }
+  .sync-dot.sync-stale { background: #d4a94a; opacity: 0.7; }
+  .sync-dot.sync-offline { background: var(--ink-soft); opacity: 0.3; }
+
+  .detail {
+    margin-top: 3vh;
+    font-size: clamp(15px, 1.9vw, 19px);
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .next {
+    z-index: 1;
+    margin-top: 4.5vh;
+    padding-top: 2.2vh;
+    border-top: 1px solid var(--hairline);
+    width: 100%;
+    max-width: 620px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: clamp(13px, 1.6vw, 15px);
+  }
+  .next b { color: var(--ink); font-weight: 600; }
+
+  .timeline {
+    z-index: 1;
+    position: absolute;
+    bottom: 5vh;
+    display: flex;
+    gap: 22px;
+    align-items: center;
+  }
+  .seg { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .seg .ring {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 1.5px solid var(--ink-soft);
+    background: transparent;
+  }
+  .seg.done .ring { background: var(--ink-soft); border-color: var(--ink-soft); }
+  .seg.current .ring { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  .seg span { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+  .seg.current span { color: var(--ink); }
+
+  @media (max-width: 640px) {
+    .timeline { gap: 14px; }
+    .seg span { display: none; }
+    .board-frame { padding: 16px 18px; border-radius: 12px; }
+    .sound-toggle { width: 30px; height: 30px; top: 3vh; right: 4vw; }
+    .sync-dot { top: 3vh; right: calc(4vw + 40px); }
+  }
+</style>
+</head>
+<body>
+  <div class="watermark" id="watermark">语</div>
+  <div class="eyebrow"><span class="dot"></span><span id="eyebrowText">—</span></div>
+  <div class="clock" id="clock">--:--</div>
+  <div class="sync-dot" id="syncDot" title="Running from built-in plan only"></div>
+  <div class="sound-toggle" id="soundToggle" title="Toggle flap sound">♪</div>
+
+  <div class="stage">
+    <div class="label fade" id="label">RIGHT NOW</div>
+    <div class="board-frame" id="boardFrame"><div class="board" id="board"></div></div>
+    <div class="detail fade" id="detail"></div>
+  </div>
+
+  <div class="next" id="nextWrap">
+    <span id="nextText"></span>
+  </div>
+
+  <div class="timeline" id="timeline"></div>
+
+<script>
+/* ================= LIVE SHEET CONFIG ================= */
+/* Paste your published Google Sheet CSV URL here to override/extend the built-in plan below.
+ * How to get this URL:
+ *   1. In Google Sheets: File -> Share -> Publish to web
+ *   2. Choose the specific sheet/tab (e.g. "3-Month Language Plan"), format: Comma-separated values (.csv)
+ *   3. Click Publish, copy the resulting link, paste it below between the quotes.
+ * Expected columns (header row, any order, matched by keyword so exact wording doesn't matter):
+ *   Date | Month Focus | Commute Session | Desk Hour Session | Night Review
+ * Date must be a real date value (not text) so it exports as YYYY-MM-DD or a standard date string.
+ * Leave this as '' to run entirely from the built-in plan below (fully offline, no network needed). */
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRuy8dZPrcqkGlNKmaCkodqo1bNGghZ3f8yp3kUwU1Q-ZQ6DwiY8yjcSpNWIJmRw/pub?gid=1601224776&single=true&output=csv';
+const SHEET_REFRESH_MS = 20 * 60 * 1000; // re-check the sheet every 20 minutes
+
+/* ================= DATA ================= */
+/* Cycle starts Monday 24 Aug 2026. Weeks 1-4 Chinese, 5-8 Korean, 9-12 Japanese, 13 review.
+ * This is the offline fallback — used for any date the live sheet above doesn't cover
+ * (or always, if SHEET_CSV_URL is left blank). */
+const START_DATE = new Date(2026, 7, 24); // Aug 24 2026, local time, midnight
+
+const LANG_STYLE = {
+  'Chinese':  { accent: '#c0392b', mark: '汉' },
+  'Korean':   { accent: '#2e5c8a', mark: '한' },
+  'Japanese': { accent: '#4a4368', mark: '日' },
+  'Review':   { accent: '#6b6355', mark: '之' },
+};
+
+const WEEK_CONTENT = {
+  1: { lang:'Chinese',
+    commute:"HelloChinese: complete the Pinyin/Tone intro unit sequentially.",
+    tue:"Pinyin systematic pass: work the full initials/finals chart, drill the 4 tone pairs out loud alongside HelloChinese's tone lessons.",
+    thu:"Continue tone-pair drilling + start basic greetings vocab (你好, 谢谢, 再见). Write each new word's pinyin by hand for accuracy.",
+    sat:"Consolidate: record yourself reading 10 pinyin syllables aloud, compare to native audio, redo any that are off. Add the trickiest tone pairs to Anki." },
+  2: { lang:'Chinese',
+    commute:"HelloChinese: Unit 1–2 lessons (greetings, numbers).",
+    tue:"Go back through Unit 1–2's grammar explicitly — sentence structure for greetings, yes/no questions with 吗. Write the pattern yourself.",
+    thu:"Numbers 1–100 + measure words intro. Practice counting objects out loud.",
+    sat:"Production: write/say 10 original sentences combining greetings + numbers. Add new vocab to Anki." },
+  3: { lang:'Chinese',
+    commute:"HelloChinese: Unit 3–4 lessons (family, time, questions).",
+    tue:"Family terms + possessive 的. Draw your own family tree in Chinese.",
+    thu:"Time expressions + question words (谁/什么/哪儿/怎么). Practice forming 5 questions.",
+    sat:"Production: write a short paragraph introducing your family. Add new vocab to Anki." },
+  4: { lang:'Chinese',
+    commute:"HelloChinese: continue into whatever's next — light pace, consolidating this week.",
+    tue:"Review all grammar from weeks 1–3. Redo anything shaky.",
+    thu:"HSK1-level reading passage or the app's mock quiz mode.",
+    sat:"Record a 30–45s self-introduction. Review tone accuracy. Finalize this month's Anki additions." },
+  5: { lang:'Korean',
+    commute:"HTSK app: units 8–9 sequentially.",
+    tue:"Hangul reading-speed drill (5min) + HTSK unit 8 grammar in depth — every practice exercise.",
+    thu:"HTSK unit 9, same depth. Build 5 of your own example sentences.",
+    sat:"Production: write 5 sentences combining units 8–9. Add vocab + grammar to Anki." },
+  6: { lang:'Korean',
+    commute:"HTSK app: units 10–11.",
+    tue:"HTSK unit 10 in depth.",
+    thu:"HTSK unit 11 in depth.",
+    sat:"Production: write 5 sentences combining units 10–11. Add to Anki." },
+  7: { lang:'Korean',
+    commute:"HTSK app: units 12–13.",
+    tue:"HTSK unit 12 in depth.",
+    thu:"HTSK unit 13 in depth — likely reaching past tense/negation.",
+    sat:"Production: write a short 4–5 line dialogue. Add to Anki." },
+  8: { lang:'Korean',
+    commute:"HTSK app: continue into the next unit, light pace.",
+    tue:"Review units 7–13 as a block.",
+    thu:"Self-test / mock quiz on this month's grammar.",
+    sat:"Write one short paragraph using this month's grammar. Finalize Anki additions." },
+  9: { lang:'Japanese',
+    commute:"Renshuu: kanji review queue + any new JLPT-path lessons.",
+    tue:"Kanji blocking — handwriting practice for the next batch, using your mnemonic system.",
+    thu:"Continue kanji blocking — push toward the next milestone (~260–280). Review shaky mnemonics.",
+    sat:"Production: write 5 words per new kanji. Add kanji + readings to Renshuu SRS." },
+  10: { lang:'Japanese',
+    commute:"Renshuu: kanji review + browse the grammar dictionary for N5 particles.",
+    tue:"N5 grammar: particles は/が/を/に/で via Renshuu's grammar dictionary.",
+    thu:"Practice exercises for this week's particles — test yourself before checking answers.",
+    sat:"Production: write 5 sentences, one per particle. Add to Renshuu SRS." },
+  11: { lang:'Japanese',
+    commute:"Renshuu: kanji review + grammar dictionary browsing.",
+    tue:"N5 grammar: て-form and たい form.",
+    thu:"N5 grammar: い/な adjectives, basic counters.",
+    sat:"Production: write 5 sentences combining this week's grammar with last week's particles." },
+  12: { lang:'Japanese',
+    commute:"Renshuu: kanji/vocab review, light pace.",
+    tue:"Review all N5 grammar covered this month.",
+    thu:"N5 practice quiz. Review every missed item.",
+    sat:"Read one Todaii article at N5 level, start to finish." },
+  13: { lang:'Review',
+    commute:"Light touch across all three apps — no new lessons, just clear what's queued.",
+    tue:"Redo Chinese's Week 4 consolidation task from memory — how much stuck?",
+    thu:"Redo Korean's Week 8 consolidation task from memory.",
+    sat:"Redo Japanese's Week 12 consolidation task from memory. Note which language felt weakest." },
+};
+const NIGHT_TEXT = "Anki (Korean + Chinese) + Renshuu (Japanese) — clear whatever's due, 5–10 min.";
+const NIGHT_SUNDAY = "Light review only (5 min) — recovery day, no new material.";
+
+/* ================= LIVE SHEET SYNC ================= */
+let sheetData = {};          // dateKey ("YYYY-MM-DD") -> { lang, commute, desk, night }
+let sheetLastSynced = null;  // Date of last successful sync, or null if never/offline
+let sheetSyncing = false;
+
+function dateKeyOf(d) {
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else { inQuotes = false; } }
+      else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else field += c;
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim() !== ''));
+}
+
+function findColumn(headers, keywords) {
+  return headers.findIndex(h => keywords.some(k => h.toLowerCase().includes(k)));
+}
+
+function parseSheetDate(raw) {
+  if (!raw) return null;
+  const s = raw.trim();
+  let d = /^\d{4}-\d{2}-\d{2}/.test(s) ? new Date(s + 'T00:00:00') : new Date(s);
+  return isNaN(d.getTime()) ? null : dateKeyOf(d);
+}
+
+async function syncSheet() {
+  if (!SHEET_CSV_URL || sheetSyncing) return;
+  sheetSyncing = true;
+  updateSyncDot('syncing');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(SHEET_CSV_URL, { cache: 'no-store', signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = parseCSV(await res.text());
+    if (rows.length < 2) throw new Error('sheet returned no data rows');
+
+    const headers = rows[0].map(h => h.trim());
+    const iDate = findColumn(headers, ['date']);
+    const iFocus = findColumn(headers, ['month focus', 'focus', 'language']);
+    const iCommute = findColumn(headers, ['commute']);
+    const iDesk = findColumn(headers, ['desk']);
+    const iNight = findColumn(headers, ['night']);
+    if (iDate === -1) throw new Error('no "Date" column found in sheet header');
+
+    const map = {};
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      const key = parseSheetDate(row[iDate]);
+      if (!key) continue;
+      map[key] = {
+        lang: iFocus > -1 ? (row[iFocus] || '').trim() : '',
+        commute: iCommute > -1 ? (row[iCommute] || '').trim() : '',
+        desk: iDesk > -1 ? (row[iDesk] || '').trim() : '',
+        night: iNight > -1 ? (row[iNight] || '').trim() : '',
+      };
+    }
+    sheetData = map;
+    sheetLastSynced = new Date();
+    updateSyncDot('ok');
+    render(); // refresh immediately with whatever changed
+  } catch (e) {
+    console.warn('Sheet sync failed, using built-in schedule for uncovered dates:', e);
+    updateSyncDot(sheetLastSynced ? 'stale' : 'offline');
+  } finally {
+    sheetSyncing = false;
+  }
+}
+
+function updateSyncDot(state) {
+  const dot = document.getElementById('syncDot');
+  if (!dot) return;
+  dot.className = 'sync-dot sync-' + state;
+  const labels = {
+    syncing: 'Syncing sheet…', ok: 'Synced ' + (sheetLastSynced ? sheetLastSynced.toLocaleTimeString() : ''),
+    stale: 'Sheet unreachable — showing last synced data', offline: 'Sheet unreachable — using built-in plan'
+  };
+  dot.title = labels[state] || '';
+}
+
+/* ================= SPLIT-FLAP BOARD ================= */
+const FLAP_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,—'-:";
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let boardCurrentText = null;
+let boardGeneration = 0; // bumped on every animated layout, lets in-flight flip timers detect they're stale
+
+function randomFlapChar() {
+  return FLAP_CHARSET[Math.floor(Math.random() * FLAP_CHARSET.length)];
+}
+
+/* ---- sound: layered synthesized "tak" — snap + mechanical body + plastic resonance ---- */
+let audioCtx = null;
+let masterBus = null; // per-voice nodes connect here
+let soundEnabled = true;
+
+function dbToGain(db) { return Math.pow(10, db / 20); }
+
+function makeSaturationCurve(amount) {
+  const n = 2048;
+  const curve = new Float32Array(n);
+  const norm = Math.tanh(amount) || 1;
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = Math.tanh(amount * x) / norm;
+  }
+  return curve;
+}
+
+function makeReverbImpulse(ctx, duration, decay) {
+  const rate = ctx.sampleRate;
+  const length = Math.max(1, Math.floor(rate * duration));
+  const impulse = ctx.createBuffer(2, length, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = impulse.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+    }
+  }
+  return impulse;
+}
+
+function initAudio() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      const input = audioCtx.createGain();
+      input.gain.value = 1;
+
+      // light top-end control only — kept high so the snap layer keeps its click, not dulled to a thud
+      const lowpass = audioCtx.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.value = 8500;
+
+      const shelf = audioCtx.createBiquadFilter();
+      shelf.type = 'highshelf';
+      shelf.frequency.value = 6000;
+      shelf.gain.value = -3;
+
+      // very gentle saturation — takes the perfectly-clean edge off, doesn't distort
+      const saturator = audioCtx.createWaveShaper();
+      saturator.curve = makeSaturationCurve(1.8);
+      saturator.oversample = '2x';
+
+      const dry = audioCtx.createGain();
+      dry.gain.value = 0.95;
+
+      // a bit more room than before — the earlier overlap problem was decay time on the dry
+      // layers, not the reverb, so this can come back up without reintroducing the buzz
+      const reverbSend = audioCtx.createGain();
+      reverbSend.gain.value = 0.12;
+      const convolver = audioCtx.createConvolver();
+      convolver.normalize = true;
+      convolver.buffer = makeReverbImpulse(audioCtx, 0.16, 2.8);
+      const reverbReturn = audioCtx.createGain();
+      reverbReturn.gain.value = 0.5;
+
+      const comp = audioCtx.createDynamicsCompressor();
+      comp.threshold.value = -26;
+      comp.knee.value = 6;
+      comp.ratio.value = 4.5;
+      comp.attack.value = 0.002;
+      comp.release.value = 0.05;
+
+      const out = audioCtx.createGain();
+      out.gain.value = 0.95;
+
+      input.connect(lowpass).connect(shelf).connect(saturator);
+      saturator.connect(dry).connect(comp);
+      saturator.connect(reverbSend).connect(convolver).connect(reverbReturn).connect(comp);
+      comp.connect(out).connect(audioCtx.destination);
+
+      masterBus = input;
+    } catch (e) { /* audio unsupported, silently continue */ }
+  } else if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+document.addEventListener('click', initAudio);
+document.addEventListener('touchstart', initAudio, { passive: true });
+
+/**
+ * One physical "flap" = 3 layered voices. accent scales overall level so a
+ * flip sequence reads as TAK-tak-TAK-tak rather than uniform clicks.
+ * Every layer decays well inside the ~70-105ms gap between flaps, so
+ * consecutive hits stay separated instead of smearing into a continuous buzz.
+ */
+function playFlapTick(accent) {
+  if (!soundEnabled || !audioCtx || !masterBus || reduceMotion) return;
+  accent = accent == null ? 1 : accent;
+
+  // per-flap randomization — real mechanisms never repeat identically
+  const t = audioCtx.currentTime + Math.max(0, (Math.random() * 6 - 3) / 1000); // ±3ms start jitter
+  const pitchMul = 1 + (Math.random() * 0.12 - 0.06); // ±6%
+  const volMul = dbToGain(Math.random() * 4 - 2) * accent; // ±2dB
+  const decayJitter = (amt) => (Math.random() * amt * 2 - amt);
+
+  // Layer 1: initial snap — the "tak" attack. Bright but tonal, not broadband hiss —
+  // a higher-Q bandpass makes noise read as a pitched "tick" rather than static.
+  {
+    const bufDur = 0.005 + Math.random() * 0.002;
+    const buf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * bufDur), audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    const bp = audioCtx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = (2500 + Math.random() * 2000) * pitchMul; // 2.5-4.5kHz
+    bp.Q.value = 3 + Math.random() * 1.5; // narrower = more "tick", less "hiss"
+    const lp = audioCtx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 6000;
+    const g = audioCtx.createGain();
+    const decay = Math.max(0.008, Math.min(0.016, 0.011 + decayJitter(0.003)));
+    const peak = 0.13 * volMul;
+    g.gain.setValueAtTime(peak, t);
+    g.gain.exponentialRampToValueAtTime(0.0006, t + decay);
+    src.connect(bp).connect(lp).connect(g).connect(masterBus);
+    src.start(t);
+    src.stop(t + bufDur + 0.005);
+  }
+
+  // Layer 2: mechanical body — a quick low "thunk" support, not a ringing tone. Fully decays
+  // well before the next flap so it can't accumulate into a drone.
+  {
+    const base = (170 + Math.random() * 90) * pitchMul;
+    const start = base * (1.6 + Math.random() * 0.2);
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(start, t);
+    osc.frequency.exponentialRampToValueAtTime(base, t + 0.008);
+    const decay = Math.max(0.01, Math.min(0.02, 0.014 + decayJitter(0.003)));
+    const g = audioCtx.createGain();
+    const peak = 0.12 * volMul;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.001);
+    g.gain.exponentialRampToValueAtTime(0.0002, t + decay);
+    osc.connect(g).connect(masterBus);
+    osc.start(t);
+    osc.stop(t + decay + 0.01);
+  }
+
+  // Layer 3: plastic resonance — subtle, 700Hz-1.5kHz, very quick pitch drop
+  {
+    const start = (700 + Math.random() * 800) * pitchMul;
+    const end = start * 0.72;
+    const osc = audioCtx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(start, t);
+    osc.frequency.exponentialRampToValueAtTime(end, t + 0.015);
+    const decay = Math.max(0.012, Math.min(0.022, 0.017 + decayJitter(0.003)));
+    const g = audioCtx.createGain();
+    const peak = 0.035 * volMul;
+    g.gain.setValueAtTime(peak, t);
+    g.gain.exponentialRampToValueAtTime(0.0004, t + decay);
+    osc.connect(g).connect(masterBus);
+    osc.start(t);
+    osc.stop(t + decay + 0.01);
+  }
+}
+
+const soundToggleEl = document.getElementById('soundToggle');
+soundToggleEl.textContent = '♪';
+soundToggleEl.addEventListener('click', (e) => {
+  e.stopPropagation();
+  initAudio();
+  soundEnabled = !soundEnabled;
+  soundToggleEl.classList.toggle('muted', !soundEnabled);
+  soundToggleEl.textContent = soundEnabled ? '♪' : '✕';
+});
+
+/* ---- tile management: grouped by word so a word never splits across lines ---- */
+function ensureTileCount(container, n) {
+  while (container.children.length < n) {
+    const tile = document.createElement('span');
+    tile.className = 'flap';
+    tile.innerHTML = '<span class="char"> </span>';
+    container.appendChild(tile);
+  }
+  while (container.children.length > n) {
+    container.removeChild(container.lastChild);
+  }
+}
+
+function flipTile(tile, targetChar, delay, generation) {
+  setTimeout(() => {
+    if (generation !== boardGeneration) return; // a newer layout has since started; this tile may now belong to different text
+    const charEl = tile.querySelector('.char');
+    if (reduceMotion) {
+      charEl.textContent = targetChar;
+      return;
+    }
+    let remaining = 4 + Math.floor(Math.random() * 5); // 4-8 flips
+    function doFlip() {
+      if (generation !== boardGeneration) return;
+      const flipDuration = 70 + Math.random() * 35; // 70-105ms, varies per flap — not a metronome
+      tile.classList.remove('flip');
+      void tile.offsetWidth; // restart animation
+      charEl.style.animationDuration = flipDuration + 'ms';
+      tile.classList.add('flip');
+      const accent = (remaining % 2 === 0) ? 1.0 : 0.62; // TAK-tak-TAK-tak, not uniform clicks
+      setTimeout(() => {
+        if (generation !== boardGeneration) return;
+        charEl.textContent = remaining > 1 ? randomFlapChar() : targetChar;
+        playFlapTick(accent);
+      }, flipDuration / 2);
+      setTimeout(() => {
+        if (generation !== boardGeneration) return;
+        remaining--;
+        if (remaining > 0) doFlip();
+      }, flipDuration);
+    }
+    doFlip();
+  }, delay);
+}
+
+function updateBoard(text) {
+  if (text === boardCurrentText) return; // nothing changed, don't replay
+  boardCurrentText = text;
+  layoutBoard(text, true);
+}
+
+function layoutBoard(text, animate) {
+  if (animate) boardGeneration++;
+  const myGeneration = boardGeneration;
+  const container = document.getElementById('board');
+  const frame = document.getElementById('boardFrame');
+  const words = text.split(' ').filter(w => w.length > 0);
+
+  // Reuse existing .word elements as a flat pool, wherever they currently live (inside old rows or not)
+  let flatWords = Array.from(container.querySelectorAll('.word'));
+  while (flatWords.length < words.length) {
+    const w = document.createElement('span');
+    w.className = 'word';
+    flatWords.push(w);
+  }
+  while (flatWords.length > words.length) {
+    flatWords.pop().remove();
+  }
+
+  let tileIndex = 0; // global index, drives the left-to-right cascade timing
+  words.forEach((word, wi) => {
+    const wordEl = flatWords[wi];
+    ensureTileCount(wordEl, word.length);
+    for (let ci = 0; ci < word.length; ci++) {
+      const tile = wordEl.children[ci];
+      if (animate) {
+        const cascadeDelay = tileIndex * 32 + Math.random() * 30;
+        flipTile(tile, word[ci], cascadeDelay, myGeneration);
+      } else {
+        tile.querySelector('.char').textContent = word[ci];
+      }
+      tileIndex++;
+    }
+  });
+
+  arrangeRows(container, frame, flatWords);
+}
+
+/* ---- balanced row assignment, computed in JS (not via CSS width tricks) ---- */
+function greedyLineCount(widths, gap, maxWidth) {
+  let lines = 1, cur = 0;
+  widths.forEach((w) => {
+    const needed = cur === 0 ? w : cur + gap + w;
+    if (needed > maxWidth && cur !== 0) { lines++; cur = w; }
+    else { cur = needed; }
+  });
+  return lines;
+}
+
+function greedyAssign(widths, gap, maxWidth) {
+  const rows = [];
+  let row = [], cur = 0;
+  widths.forEach((w, i) => {
+    const needed = row.length === 0 ? w : cur + gap + w;
+    if (needed > maxWidth && row.length !== 0) { rows.push(row); row = [i]; cur = w; }
+    else { row.push(i); cur = needed; }
+  });
+  if (row.length) rows.push(row);
+  return rows;
+}
+
+function getAvailableWidth(frame) {
+  // Mirrors the CSS (max-width: min(92vw, 760px), minus padding) directly,
+  // rather than reading frame.getBoundingClientRect().width, which is unreliable
+  // here since the frame shrink-wraps its content.
+  const cs = getComputedStyle(frame);
+  const paddingH = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  const cssMax = Math.min(window.innerWidth * 0.92, 760);
+  return Math.max(cssMax - paddingH, 60);
+}
+
+function arrangeRows(container, frame, flatWords) {
+  if (flatWords.length === 0) return;
+
+  // Unwrap any existing row containers so every word is a direct, measurable child
+  Array.from(container.querySelectorAll('.board-row')).forEach(r => {
+    Array.from(r.children).forEach(child => container.appendChild(child));
+    r.remove();
+  });
+  flatWords.forEach(w => container.appendChild(w));
+
+  const boardFontSize = parseFloat(getComputedStyle(container).fontSize);
+  const gap = 0.4 * boardFontSize; // matches .board-row's column-gap: 0.4em
+  const wordWidths = flatWords.map(w => w.getBoundingClientRect().width);
+  const availableWidth = getAvailableWidth(frame);
+  const totalNaturalWidth = wordWidths.reduce((s, w, i) => s + w + (i > 0 ? gap : 0), 0);
+
+  let rows;
+  if (totalNaturalWidth <= availableWidth) {
+    rows = [wordWidths.map((_, i) => i)]; // fits on one line, nothing to balance
+  } else {
+    const naturalLineCount = greedyLineCount(wordWidths, gap, availableWidth);
+    let lo = Math.max(...wordWidths);
+    let hi = availableWidth;
+    let best = hi;
+    for (let iter = 0; iter < 24 && hi - lo > 0.5; iter++) {
+      const mid = (lo + hi) / 2;
+      const lc = greedyLineCount(wordWidths, gap, mid);
+      if (lc <= naturalLineCount) { best = mid; hi = mid; } else { lo = mid; }
+    }
+    rows = greedyAssign(wordWidths, gap, best);
+  }
+
+  rows.forEach((idxList) => {
+    const rowEl = document.createElement('span');
+    rowEl.className = 'board-row';
+    idxList.forEach(i => rowEl.appendChild(flatWords[i]));
+    container.appendChild(rowEl);
+  });
+}
+
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (boardCurrentText) layoutBoard(boardCurrentText, false);
+  }, 150);
+});
+
+/* ---- click/tap anywhere on the board to replay the flap + sound ---- */
+document.getElementById('boardFrame').addEventListener('click', () => {
+  initAudio();
+  if (!boardCurrentText) return;
+  layoutBoard(boardCurrentText, true);
+  syncSheet();
+});
+
+function updateFade(el, text) {
+  // Track the intended final text separately from el.textContent, which lags behind
+  // while a fade is in flight — comparing against the live DOM text here would let a
+  // second call in quick succession get silently dropped while a stale timer still fires.
+  const target = el._fadeTarget !== undefined ? el._fadeTarget : el.textContent;
+  if (target === text) return;
+  clearTimeout(el._fadeTimer);
+  el._fadeTarget = text;
+  el.classList.add('out');
+  el._fadeTimer = setTimeout(() => {
+    el.textContent = text;
+    el.classList.remove('out');
+  }, 200);
+}
+
+/* ================= LOGIC ================= */
+function pad(n){ return n.toString().padStart(2,'0'); }
+function toMinutes(h,m){ return h*60+m; }
+
+function getWeekNumber(now) {
+  const diffDays = Math.floor((stripTime(now) - stripTime(START_DATE)) / 86400000);
+  if (diffDays < 0) return 0;
+  const wk = Math.floor(diffDays / 7) + 1;
+  return wk > 13 ? 14 : wk;
+}
+function stripTime(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+
+function buildDayBlocks(now) {
+  const wk = getWeekNumber(now);
+  const dow = now.getDay(); // 0 Sun .. 6 Sat
+  const isWeekday = dow >= 1 && dow <= 5;
+  const fallback = WEEK_CONTENT[Math.min(Math.max(wk, 1), 13)] || WEEK_CONTENT[13];
+  const sheetRow = sheetData[dateKeyOf(now)];
+
+  const lang = (sheetRow && sheetRow.lang) || fallback.lang;
+  const commuteText = (sheetRow && sheetRow.commute) || fallback.commute;
+  const deskTextByDow = { 2: 'tue', 4: 'thu', 6: 'sat' };
+  const deskKey = deskTextByDow[dow];
+  const deskText = deskKey ? ((sheetRow && sheetRow.desk) || fallback[deskKey]) : null;
+  const nightText = (sheetRow && sheetRow.night) || (dow === 0 ? NIGHT_SUNDAY : NIGHT_TEXT);
+
+  const blocks = [];
+  if (isWeekday) {
+    blocks.push({ id:'commuteAM', name:'Commute — App Lesson', start:[7,0], end:[8,0], text: commuteText });
+    blocks.push({ id:'commutePM', name:'Commute — App Lesson', start:[16,0], end:[17,0], text: commuteText });
+  }
+  if (dow === 2) blocks.push({ id:'desk', name:'Desk Hour', start:[18,0], end:[19,0], text: deskText });
+  if (dow === 4) blocks.push({ id:'desk', name:'Desk Hour', start:[18,0], end:[19,0], text: deskText });
+  if (dow === 6) blocks.push({ id:'desk', name:'Desk Hour', start:[17,0], end:[18,0], text: deskText });
+
+  blocks.push({ id:'night', name:'Night Review', start:[21,0], end:[21,15], text: nightText });
+
+  blocks.sort((a,b)=> toMinutes(...a.start) - toMinutes(...b.start));
+  return { blocks, wk, content: { lang }, dow };
+}
+
+function render() {
+  const now = new Date();
+  const wk = getWeekNumber(now);
+  const sheetRow = sheetData[dateKeyOf(now)]; // if the live sheet covers today, it overrides the 13-week cap below
+
+  const eyebrow = document.getElementById('eyebrowText');
+  const dateStr = now.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+
+  if (wk === 0 && !sheetRow) {
+    eyebrow.textContent = `Starts ${START_DATE.toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'})}`;
+    setLangTheme('Review');
+    updateFade(document.getElementById('label'), 'NOT STARTED YET');
+    updateBoard("The 3-month cycle hasn't begun.");
+    updateFade(document.getElementById('detail'), 'Chinese → Korean → Japanese, starting Monday 24 Aug 2026.');
+    document.getElementById('nextWrap').style.visibility = 'hidden';
+    document.getElementById('timeline').innerHTML = '';
+    tickClock();
+    return;
+  }
+  if (wk === 14 && !sheetRow) {
+    eyebrow.textContent = 'CYCLE COMPLETE';
+    setLangTheme('Review');
+    updateFade(document.getElementById('label'), 'DONE');
+    updateBoard('Cycle complete — time to plan the next 3 months.');
+    updateFade(document.getElementById('detail'), 'Which language felt weakest? Let that weight the next cycle.');
+    document.getElementById('nextWrap').style.visibility = 'hidden';
+    document.getElementById('timeline').innerHTML = '';
+    tickClock();
+    return;
+  }
+
+  const { blocks, content, dow } = buildDayBlocks(now);
+  const nowMin = toMinutes(now.getHours(), now.getMinutes());
+
+  const weekLabel = (wk >= 1 && wk <= 13) ? `Week ${wk} of 13 · ` : '';
+  eyebrow.textContent = `${dateStr} · ${weekLabel}${content.lang} focus`;
+  setLangTheme(content.lang);
+
+  let current = null, upcoming = null;
+  for (const b of blocks) {
+    const s = toMinutes(...b.start), e = toMinutes(...b.end);
+    if (nowMin >= s && nowMin < e) current = b;
+    if (!upcoming && nowMin < s) upcoming = b;
+  }
+
+  const label = document.getElementById('label');
+  const detail = document.getElementById('detail');
+  const nextWrap = document.getElementById('nextWrap');
+  const nextText = document.getElementById('nextText');
+
+  if (current) {
+    updateFade(label, 'RIGHT NOW');
+    updateBoard(current.name);
+    updateFade(detail, current.text);
+  } else if (upcoming) {
+    updateFade(label, 'UP NEXT');
+    updateBoard(`${upcoming.name} at ${pad(upcoming.start[0])}:${pad(upcoming.start[1])}`);
+    updateFade(detail, upcoming.text);
+  } else {
+    updateFade(label, 'TODAY');
+    updateBoard("Today's language work is done.");
+    updateFade(detail, dow === 0 ? 'Recovery day — nothing more needed.' : 'See you tomorrow.');
+  }
+
+  if (upcoming && current) {
+    nextWrap.style.visibility = 'visible';
+    nextText.innerHTML = `Up next: <b>${upcoming.name}</b> at ${pad(upcoming.start[0])}:${pad(upcoming.start[1])}`;
+  } else {
+    nextWrap.style.visibility = 'hidden';
+  }
+
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+  blocks.forEach(b => {
+    const e = toMinutes(...b.end);
+    const s = toMinutes(...b.start);
+    const seg = document.createElement('div');
+    seg.className = 'seg' + (current && current.id===b.id && current.start[0]===b.start[0] ? ' current' : (nowMin >= e ? ' done' : ''));
+    seg.innerHTML = `<div class="ring"></div><span>${pad(b.start[0])}:${pad(b.start[1])}</span>`;
+    tl.appendChild(seg);
+  });
+}
+
+function setLangTheme(lang) {
+  const style = LANG_STYLE[lang] || LANG_STYLE['Review'];
+  document.documentElement.style.setProperty('--accent', style.accent);
+  document.documentElement.style.setProperty('--accent-soft', style.accent + '30');
+  document.getElementById('watermark').textContent = style.mark;
+}
+
+function tickClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+
+render();
+tickClock();
+setInterval(tickClock, 1000);
+setInterval(render, 10000);
+syncSheet();
+setInterval(syncSheet, SHEET_REFRESH_MS);
+</script>
+</body>
+</html>
