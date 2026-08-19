@@ -675,7 +675,7 @@ function flipTile(tile, targetChar, delay, generation) {
     let remaining = 4 + Math.floor(Math.random() * 5); // 4-8 flips
     function doFlip() {
       if (generation !== boardGeneration) return;
-      const flipDuration = 70 + Math.random() * 35; // 70-105ms, varies per flap — not a metronome
+      const flipDuration = 130 + Math.random() * 50; // 130-180ms — closer to a real board's deliberate pace
       tile.classList.remove('flip');
       void tile.offsetWidth; // restart animation
       charEl.style.animationDuration = flipDuration + 'ms';
@@ -727,7 +727,7 @@ function layoutBoard(text, animate) {
     for (let ci = 0; ci < word.length; ci++) {
       const tile = wordEl.children[ci];
       if (animate) {
-        const cascadeDelay = tileIndex * 32 + Math.random() * 30;
+        const cascadeDelay = tileIndex * 55 + Math.random() * 40;
         flipTile(tile, word[ci], cascadeDelay, myGeneration);
       } else {
         tile.querySelector('.char').textContent = word[ci];
