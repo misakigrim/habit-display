@@ -404,16 +404,24 @@ async function syncSheet() {
     const rows = parseCSV(await res.text());
     if (rows.length < 2) throw new Error('sheet returned no data rows');
 
-    const headers = rows[0].map(h => h.trim());
+    // Find the real header row instead of assuming it's the first line — title/description
+    // rows above it (like row 1's title, row 3's description) are common and should be skipped.
+    let headerRowIdx = -1;
+    for (let r = 0; r < Math.min(10, rows.length); r++) {
+      if (rows[r].some(c => c.trim().toLowerCase().includes('date'))) { headerRowIdx = r; break; }
+    }
+    if (headerRowIdx === -1) throw new Error('no "Date" column found in the first 10 rows of the sheet');
+
+    const headers = rows[headerRowIdx].map(h => h.trim());
     const iDate = findColumn(headers, ['date']);
     const iFocus = findColumn(headers, ['month focus', 'focus', 'language']);
     const iCommute = findColumn(headers, ['commute']);
     const iDesk = findColumn(headers, ['desk']);
     const iNight = findColumn(headers, ['night']);
-    if (iDate === -1) throw new Error('no "Date" column found in sheet header');
+    if (iDate === -1) throw new Error('found a row containing "date" but couldn\'t resolve it to a column');
 
     const map = {};
-    for (let r = 1; r < rows.length; r++) {
+    for (let r = headerRowIdx + 1; r < rows.length; r++) {
       const row = rows[r];
       const key = parseSheetDate(row[iDate]);
       if (!key) continue;
